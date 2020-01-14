@@ -1,0 +1,406 @@
+objects:
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: quarkusbackend
+    name: s2i-java
+  spec:
+    lookupPolicy:
+      local: false
+    tags:
+    - from:
+        kind: DockerImage
+        name: fabric8/s2i-java
+      generation: null
+      importPolicy: {}
+      name: latest
+      referencePolicy:
+        type: ''
+  status:
+    dockerImageRepository: ''
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: quarkusbackend
+    name: quarkusbackend
+  spec:
+    lookupPolicy:
+      local: false
+  status:
+    dockerImageRepository: ''
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: quarkusbackend
+    name: quarkusbackend
+  spec:
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: quarkusbackend:latest
+    postCommit: {}
+    resources: {}
+    source:
+      git:
+        uri: ${SOURCE_REPOSITORY_URL}
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: s2i-java:latest
+        incremental: true
+        env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: quarkusbackend-database-bind
+              key: uri
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: quarkusbackend-database-bind
+              key: user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: quarkusbackend-database-bind
+              key: password
+        - name: QUARKUS_DATASOURCE_URL
+          value: jdbc:postgresql://$(DB_HOST)/my_data
+        - name: QUARKUS_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: quarkusbackend-database-bind
+              key: user
+        - name: QUARKUS_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: quarkusbackend-database-bind
+              key: password
+        - name: GC_MAX_METASPACE_SIZE
+          value: '150'
+        - name: KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: JAVA_APP_JAR
+          value: my-app-runner.jar
+        - name: ARTIFACT_COPY_ARGS
+          value: -p -r lib/ my-app-runner.jar
+      type: Source
+    triggers:
+    - type: GitHub
+      github:
+        secret: ${GITHUB_WEBHOOK_SECRET}
+    - type: ConfigChange
+    - type: ImageChange
+      imageChange: {}
+  status:
+    lastVersion: 0
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: quarkusbackend
+    name: quarkusbackend
+  spec:
+    replicas: 1
+    selector:
+      app: quarkusbackend
+      deploymentconfig: quarkusbackend
+    strategy:
+      resources: {}
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: quarkusbackend
+          deploymentconfig: quarkusbackend
+      spec:
+        containers:
+        - image: quarkusbackend:latest
+          name: quarkusbackend
+          ports:
+          - containerPort: 9779
+            protocol: TCP
+          - containerPort: 8080
+            protocol: TCP
+          - containerPort: 8778
+            protocol: TCP
+          resources:
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 120
+            timeoutSeconds: 3
+          env:
+          - name: DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: quarkusbackend-database-bind
+                key: uri
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: quarkusbackend-database-bind
+                key: user
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: quarkusbackend-database-bind
+                key: password
+          - name: QUARKUS_DATASOURCE_URL
+            value: jdbc:postgresql://$(DB_HOST)/my_data
+          - name: QUARKUS_DATASOURCE_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: quarkusbackend-database-bind
+                key: user
+          - name: QUARKUS_DATASOURCE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: quarkusbackend-database-bind
+                key: password
+          - name: GC_MAX_METASPACE_SIZE
+            value: '150'
+          - name: KUBERNETES_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: JAVA_APP_JAR
+            value: my-app-runner.jar
+          - name: ARTIFACT_COPY_ARGS
+            value: -p -r lib/ my-app-runner.jar
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - quarkusbackend
+        from:
+          kind: ImageStreamTag
+          name: quarkusbackend:latest
+      type: ImageChange
+  status:
+    availableReplicas: 0
+    latestVersion: 0
+    observedGeneration: 0
+    replicas: 0
+    unavailableReplicas: 0
+    updatedReplicas: 0
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: quarkusbackend
+    name: quarkusbackend
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8778-tcp
+      port: 8778
+      protocol: TCP
+      targetPort: 8778
+    - name: 9779-tcp
+      port: 9779
+      protocol: TCP
+      targetPort: 9779
+    selector:
+      app: quarkusbackend
+      deploymentconfig: quarkusbackend
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: quarkusbackend
+    labels:
+      app: quarkusbackend
+  spec:
+    port:
+      targetPort: 8080-tcp
+    to:
+      kind: Service
+      name: quarkusbackend
+- kind: Secret
+  apiVersion: v1
+  metadata:
+    name: quarkusbackend-database-bind
+    labels:
+      app: quarkusbackend
+  stringData:
+    uri: quarkusbackend-database
+    database: my_data
+    user: dbuser
+    password: secret
+- apiVersion: image.openshift.io/v1
+  generation: 0
+  image:
+    dockerImageLayers: null
+    dockerImageMetadata:
+      ContainerConfig: {}
+      Created: null
+      Id: ''
+      apiVersion: '1.0'
+      kind: DockerImage
+    dockerImageMetadataVersion: '1.0'
+    metadata:
+      creationTimestamp: null
+  kind: ImageStreamTag
+  lookupPolicy:
+    local: false
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: quarkusbackend
+    name: quarkusbackend-database:latest
+  tag:
+    annotations: null
+    from:
+      kind: DockerImage
+      name: 172.30.1.1:5000/openshift/postgresql:latest
+    generation: null
+    importPolicy: {}
+    name: latest
+    referencePolicy:
+      type: ''
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: quarkusbackend
+    name: quarkusbackend-database
+  spec:
+    replicas: 1
+    selector:
+      app: quarkusbackend
+      deploymentconfig: quarkusbackend-database
+    strategy:
+      resources: {}
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: quarkusbackend
+          deploymentconfig: quarkusbackend-database
+      spec:
+        containers:
+        - image: 172.30.1.1:5000/openshift/postgresql:latest
+          name: quarkusbackend-database
+          ports:
+          - containerPort: 5432
+            protocol: TCP
+          resources:
+            limits:
+              cpu: '1'
+              memory: 512Mi
+          volumeMounts:
+          - mountPath: /var/lib/pgsql/data
+            name: quarkusbackend-database-volume-1
+          readinessProbe:
+            initialDelaySeconds: 5
+            exec:
+              command:
+              - /usr/libexec/check-container
+          livenessProbe:
+            initialDelaySeconds: 120
+            exec:
+              command:
+              - /usr/libexec/check-container
+              - --live
+          env:
+          - name: POSTGRESQL_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: quarkusbackend-database-bind
+                key: database
+          - name: POSTGRESQL_USER
+            valueFrom:
+              secretKeyRef:
+                name: quarkusbackend-database-bind
+                key: user
+          - name: POSTGRESQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: quarkusbackend-database-bind
+                key: password
+        volumes:
+        - emptyDir: {}
+          name: quarkusbackend-database-volume-1
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - quarkusbackend-database
+        from:
+          kind: ImageStreamTag
+          name: postgresql:latest
+          namespace: openshift
+      type: ImageChange
+  status:
+    availableReplicas: 0
+    latestVersion: 0
+    observedGeneration: 0
+    replicas: 0
+    unavailableReplicas: 0
+    updatedReplicas: 0
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: quarkusbackend
+    name: quarkusbackend-database
+  spec:
+    ports:
+    - name: 5432-tcp
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+    selector:
+      app: quarkusbackend
+      deploymentconfig: quarkusbackend-database
+  status:
+    loadBalancer: {}
+parameters:
+- name: SOURCE_REPOSITORY_URL
+  description: The source URL for the application
+  displayName: Source URL
+  value: https://github.com/dummy_org/dummy_repo
+  required: true
+- name: GITHUB_WEBHOOK_SECRET
+  description: The secret used to configure a GitHub webhook
+  displayName: GitHub Webhook Secret
+  required: true
+  from: '[a-zA-Z0-9]{40}'
+  generate: expression
+apiVersion: template.openshift.io/v1
+kind: Template
