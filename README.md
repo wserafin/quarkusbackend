@@ -4,7 +4,7 @@ You don't have to install anything on your workstation. CRW provides IDE and Run
 
 To start your workstation in Red Hat CodeReady Workspaces:
 <a href="https://codeready-crw2.apps.ocp4.home.ocpcloud.com/f?url=https://github.com/VeerMuchandi/quarkusbackend">
-    <img src="http://beta.codenvy.com/factory/resources/codenvy-contribute.svg" width="130" alt="Push" align="top">
+    <img src="http://beta.codenvy.com/factory/resources/codenvy-contribute.svg?sanitize=true" width="130" alt="Push" align="top">
 </a>
 
 # runtime-quarkus
