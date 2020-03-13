@@ -4,7 +4,7 @@ We use Red Hat's Code Ready Workspaces (CRW) for application development. Pressi
 You don't have to install anything on your workstation. CRW provides IDE and Runtimes!!
 
 To start your workstation in Red Hat CodeReady Workspaces:
-<a href="https://http://codeready-crw2.apps.first.40.ocpcloud.com/f?url=https://github.com/VeerMuchandi/quarkusbackend">
+<a href="http://codeready-crw2.apps.first.40.ocpcloud.com/f?url=https://github.com/VeerMuchandi/quarkusbackend">
     <img src="https://pbs.twimg.com/profile_images/700361197112000513/w9Cyilbf_400x400.png" width="130" alt="Push" align="top">
 </a>
 
