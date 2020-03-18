@@ -35,9 +35,7 @@ import javax.persistence.Table;
 @Entity
 @Table(name = "known_fruits")
 @NamedQueries({
-        @NamedQuery(name = "Fruits.findAll", query = "SELECT f FROM Fruit f"),
-        @NamedQuery(name = "Fruits.findByName", query = "SELECT f from Fruit f where f.name = :name")
-
+        @NamedQuery(name = "Fruits.findAll", query = "SELECT f FROM Fruit f")
 })
 public class Fruit implements Serializable {
     private static final long serialVersionUID = 1L;
