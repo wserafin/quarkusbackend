@@ -6,7 +6,7 @@ projects:
 
   - source:
       type: git
-      location: 'https://github.com/veermuchandi/quarkusbackend'
+      location: 'https://github.com/wserafin/quarkusbackend'
     name: quarkusbackend
 
 components:
